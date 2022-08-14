@@ -1,4 +1,3 @@
-# Requires Python 3.7+
 import dataclasses
 import struct
 import sys
@@ -42,17 +41,31 @@ def validate(file):
     prev_ramp = None
     prev_closure_1 = None
     prev_closure_2 = None
+    total_light_count = 30
+    total_closure_count = 16
     count = 0
+    """lights_used = []"""
+    lights_used = [0 for b in range(total_light_count)]
+    """closures_used = []"""
+    closures_used = [0 for b in range(total_closure_count)]
 
-    for frame_i in range(frame_count):
+    light_label = ["Left Outer Main Beam","Right Outer Main Beam","Left Inner Main Beam","Right Inner Main Beam","Left Signature","Right Signature","Left Channel 4","Right Channel 4","Left Channel 5","Right Channel 5","Left Channel 6","Right Channel 6","Left Front Turn","Right Front Turn","Left Front Fog","Right Front Fog","Left Aux Park","Right Aux Park","Left Side Marker","Right Side Marker","Left Side Repeater","Right Side Repeater","Left Rear Turn","Right Rear Turn","Brake Lights","Left Tail","Right Tail","Reverse Lights","Rear Fog Lights","License Plate"]
+    closure_label = ["Left Falcon Door (X Only)","Right Falcon Door (X Only)","Left Front Door (S Only)","Right Front Door (S Only)","Left Mirror","Right Mirror","Left Front Window","Left Rear Window","Right Front Window","Right Rear Window","Liftgate","Left Front Door Handle (S or X Only)","Left Rear Door Handle (S or X Only)","Right Front Door Handle (S or X Only)","Rear Rear Door Handle (S or X Only)","Charge Port"]
+
+    for current_frame in range(frame_count):
         lights = file.read(30)
         closures = file.read(16)
         file.seek(2, 1)
 
+        for light_count in range(total_light_count):
+            if lights[light_count] > 0:
+                lights_used[light_count] = 1
+        for closure_count in range(total_closure_count):
+            if closures[closure_count] > 0:
+                closures_used[closure_count] = 1
         light_state = [(b > 127) for b in lights]
         ramp_state = [min((((255 - b) if (b > 127) else (b)) // 13 + 1) // 2, 3) for b in lights[:14]]
         closure_state = [((b // 32 + 1) // 2) for b in closures]
-
         if light_state != prev_light:
             prev_light = light_state
             count += 1
@@ -65,6 +78,12 @@ def validate(file):
         if closure_state[10:] != prev_closure_2:
             prev_closure_2 = closure_state[10:]
             count += 1
+    for x in range(total_light_count):
+        if lights_used[x] == 0:
+            print(f"{light_label[x]} is unused")
+    for x in range(total_closure_count):
+        if closures_used[x] == 0:
+            print(f"{closure_label[x]} is unused")
 
     return ValidationResults(frame_count, step_time, duration_s, count / MEMORY_LIMIT)
 
